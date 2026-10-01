@@ -1,0 +1,368 @@
+
+    const CONFIG = {
+      formEndpoint: "https://formspree.io/f/REPLACE_ME",
+      fallbackEmail: "info@frontrangewaterpros.com"
+    };
+
+    const UTILITY_DATA = {
+      "Denver Water": { hardness: 5.2, label: "Denver Water planning average" },
+      "Aurora Water": { hardness: 8.0, label: "Aurora Water planning average" },
+      "Westminster Water": { hardness: 7.4, label: "Westminster Water planning average" }
+    };
+
+    const form = document.getElementById("assessmentForm");
+    const steps = [...document.querySelectorAll(".form-step")];
+    const progressBars = [...document.querySelectorAll(".progress-bar")];
+    const recommendationContent = document.getElementById("recommendationContent");
+    const recommendationSummary = document.getElementById("recommendationSummary");
+    const formMessage = document.getElementById("formMessage");
+
+    let currentStep = 0;
+
+    function showStep(index) {
+      currentStep = Math.max(0, Math.min(index, steps.length - 1));
+
+      steps.forEach((step, i) => {
+        step.classList.toggle("active", i === currentStep);
+      });
+
+      progressBars.forEach((bar, i) => {
+        bar.classList.toggle("active", i <= currentStep);
+      });
+
+      formMessage.className = "message";
+      formMessage.textContent = "";
+      updateRecommendation();
+    }
+
+    function validateCurrentStep() {
+      const fields = [...steps[currentStep].querySelectorAll("input, select, textarea")];
+      for (const field of fields) {
+        if (!field.checkValidity()) {
+          field.reportValidity();
+          field.focus();
+          return false;
+        }
+      }
+      return true;
+    }
+
+    document.querySelectorAll(".next-step").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (validateCurrentStep()) showStep(currentStep + 1);
+      });
+    });
+
+    document.querySelectorAll(".previous-step").forEach((btn) => {
+      btn.addEventListener("click", () => showStep(currentStep - 1));
+    });
+
+    function selectedValues(name) {
+      return [...form.querySelectorAll(`input[name="${name}"]:checked`)].map((input) => input.value);
+    }
+
+    function getUtilityProfile() {
+      const utility = document.getElementById("utility").value;
+      const city = document.getElementById("city").value;
+      const source = document.getElementById("waterSource").value;
+
+      if (source === "well") {
+        return { hardness: null, label: "Private-well testing required" };
+      }
+
+      if (UTILITY_DATA[utility]) return UTILITY_DATA[utility];
+
+      const cityDefaults = {
+        Denver: UTILITY_DATA["Denver Water"],
+        Aurora: UTILITY_DATA["Aurora Water"],
+        Westminster: UTILITY_DATA["Westminster Water"]
+      };
+
+      return cityDefaults[city] || { hardness: null, label: "Utility or onsite result needed" };
+    }
+
+    function calculatePeakFlow() {
+      const bathrooms = Number(document.getElementById("bathrooms").value) || 1;
+      const showers = Number(document.getElementById("simultaneousShowers").value) || 1;
+
+      let peak = 7;
+      peak += Math.max(0, bathrooms - 2) * 1.5;
+      peak += Math.max(0, showers - 1) * 2.5;
+
+      if (document.getElementById("largeTub").checked) peak += 2;
+      if (document.getElementById("bodySprays").checked) peak += 3;
+
+      return Math.ceil(peak);
+    }
+
+    function getTreatmentCandidates(concerns, source, hardness) {
+      const items = [];
+
+      if (concerns.includes("Chlorine taste or odor")) {
+        items.push("Whole-home carbon filtration");
+      }
+
+      if (concerns.includes("Scale and water spots")) {
+        if (hardness !== null && hardness >= 7) {
+          items.push("Metered water softener");
+        } else {
+          items.push("Onsite hardness test before softener selection");
+        }
+      }
+
+      if (
+        concerns.includes("Better drinking water") ||
+        concerns.includes("Lead concern") ||
+        concerns.includes("PFAS concern")
+      ) {
+        items.push("Certified point-of-use drinking-water treatment");
+      }
+
+      if (concerns.includes("Sediment, sand or rust")) {
+        items.push("Sediment filtration and source diagnosis");
+      }
+
+      if (
+        concerns.includes("Orange or black staining") ||
+        concerns.includes("Rotten-egg odor")
+      ) {
+        items.push("Laboratory testing for iron, manganese, or sulfur conditions");
+      }
+
+      if (source === "well") {
+        items.unshift("Certified private-well laboratory analysis before equipment selection");
+      }
+
+      if (!items.length) {
+        items.push("Water consultation and onsite testing before treatment selection");
+      }
+
+      return [...new Set(items)];
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function updateRecommendation() {
+      const occupants = Number(document.getElementById("occupants").value) || 0;
+      const source = document.getElementById("waterSource").value;
+      const utilityProfile = getUtilityProfile();
+      const concerns = selectedValues("concerns");
+
+      const dailyGallons = occupants ? occupants * 50 : 0;
+      const peakFlow = calculatePeakFlow();
+      const hardnessLoad =
+        utilityProfile.hardness !== null && dailyGallons
+          ? Math.round(dailyGallons * utilityProfile.hardness)
+          : null;
+
+      const eightDayCapacity = hardnessLoad !== null ? hardnessLoad * 8 : null;
+
+      const treatmentCandidates = getTreatmentCandidates(
+        concerns,
+        source,
+        utilityProfile.hardness
+      );
+
+      let softenerClass = "Not yet indicated";
+
+      if (eightDayCapacity !== null && concerns.includes("Scale and water spots")) {
+        if (eightDayCapacity <= 10000) {
+          softenerClass = "Approximately 1.0 cu. ft. candidate; verify usable capacity";
+        } else if (eightDayCapacity <= 18000) {
+          softenerClass = "Approximately 1.5 cu. ft. candidate; verify usable capacity";
+        } else {
+          softenerClass = "Approximately 2.0+ cu. ft. candidate; technical review required";
+        }
+      }
+
+      const treatmentHtml = treatmentCandidates
+        .map((item) => `<li>${escapeHtml(item)}</li>`)
+        .join("");
+
+      recommendationContent.innerHTML = `
+        <div class="result-list">
+          <div class="result-card">
+            <span class="result-label">Planning water profile</span>
+            <div class="result-value">${escapeHtml(utilityProfile.label)}</div>
+            <div class="result-detail">
+              ${
+                utilityProfile.hardness !== null
+                  ? `${utilityProfile.hardness.toFixed(1)} GPG planning hardness`
+                  : "Property-specific result required"
+              }
+            </div>
+          </div>
+
+          <div class="result-card">
+            <span class="result-label">Estimated indoor volume</span>
+            <div class="result-value">
+              ${dailyGallons ? `${dailyGallons} gallons/day` : "Enter occupants"}
+            </div>
+            <div class="result-detail">
+              Preliminary estimate using 50 gallons per occupant per day.
+            </div>
+          </div>
+
+          <div class="result-card">
+            <span class="result-label">Preliminary peak-flow target</span>
+            <div class="result-value">At least ${peakFlow} GPM</div>
+            <div class="result-detail">
+              Must be confirmed through fixture and onsite flow evaluation.
+            </div>
+          </div>
+
+          <div class="result-card">
+            <span class="result-label">Daily hardness load</span>
+            <div class="result-value">
+              ${
+                hardnessLoad !== null
+                  ? `${hardnessLoad.toLocaleString()} grains/day`
+                  : "Measurement required"
+              }
+            </div>
+            <div class="result-detail">
+              Based on estimated indoor use and planning hardness.
+            </div>
+          </div>
+
+          <div class="result-card">
+            <span class="result-label">Softener sizing candidate</span>
+            <div class="result-value">${escapeHtml(softenerClass)}</div>
+            <div class="result-detail">
+              Nominal labels do not equal efficient usable capacity.
+            </div>
+          </div>
+
+          <div class="result-card">
+            <span class="result-label">Categories to evaluate</span>
+            <ul style="padding-left: 1.1rem; margin-top: 0.35rem;">
+              ${treatmentHtml}
+            </ul>
+          </div>
+        </div>
+
+        <div class="notice">
+          Preliminary only. Final selection requires onsite water testing,
+          available-flow and pressure checks, plumbing inspection, drain and
+          power verification, manufacturer specifications, and installer approval.
+        </div>
+      `;
+
+      recommendationSummary.value = [
+        `Water profile: ${utilityProfile.label}`,
+        `Planning hardness: ${
+          utilityProfile.hardness !== null
+            ? `${utilityProfile.hardness.toFixed(1)} GPG`
+            : "Testing required"
+        }`,
+        `Estimated indoor use: ${dailyGallons ? `${dailyGallons} gallons/day` : "Unknown"}`,
+        `Preliminary peak-flow target: ${peakFlow} GPM`,
+        `Daily hardness load: ${
+          hardnessLoad !== null ? `${hardnessLoad} grains/day` : "Testing required"
+        }`,
+        `Softener candidate: ${softenerClass}`,
+        `Treatment categories: ${treatmentCandidates.join("; ")}`
+      ].join("\n");
+    }
+
+    form.addEventListener("input", updateRecommendation);
+    form.addEventListener("change", updateRecommendation);
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      if (!validateCurrentStep()) return;
+
+      updateRecommendation();
+
+      const formData = new FormData(form);
+      formData.append(
+        "features_summary",
+        selectedValues("features").join(", ") || "None reported"
+      );
+      formData.append(
+        "concerns_summary",
+        selectedValues("concerns").join(", ") || "No concerns selected"
+      );
+      formData.append("_subject", "New Front Range Water Pros assessment");
+
+      const endpointReady =
+        CONFIG.formEndpoint && !CONFIG.formEndpoint.includes("REPLACE_ME");
+
+      if (!endpointReady) {
+        formMessage.className = "message error";
+        formMessage.innerHTML =
+          'Preview mode: lead delivery is not configured yet. Replace <strong>REPLACE_ME</strong> in the Formspree URL inside the script.';
+        return;
+      }
+
+      const submitButton = form.querySelector('button[type="submit"]');
+      const originalText = submitButton.textContent;
+
+      submitButton.disabled = true;
+      submitButton.textContent = "Submitting…";
+
+      try {
+        const response = await fetch(CONFIG.formEndpoint, {
+          method: "POST",
+          body: formData,
+          headers: { Accept: "application/json" }
+        });
+
+        if (!response.ok) throw new Error("Submission failed");
+
+        formMessage.className = "message success";
+        formMessage.textContent =
+          "Thank you. Your assessment was received. We’ll review it and follow up shortly.";
+
+        submitButton.textContent = "Assessment submitted";
+      } catch (error) {
+        formMessage.className = "message error";
+        formMessage.textContent =
+          `We could not submit the form. Please email ${CONFIG.fallbackEmail}.`;
+        submitButton.disabled = false;
+        submitButton.textContent = originalText;
+      }
+    });
+
+    const root = document.documentElement;
+    const themeToggle = document.getElementById("themeToggle");
+    let currentTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+
+    root.setAttribute("data-theme", currentTheme);
+
+    themeToggle.addEventListener("click", () => {
+      currentTheme = currentTheme === "dark" ? "light" : "dark";
+      root.setAttribute("data-theme", currentTheme);
+    });
+
+    const menuToggle = document.getElementById("menuToggle");
+    const navLinks = document.getElementById("navLinks");
+
+    menuToggle.addEventListener("click", () => {
+      const open = navLinks.classList.toggle("open");
+      menuToggle.setAttribute("aria-expanded", String(open));
+      menuToggle.setAttribute("aria-label", open ? "Close navigation" : "Open navigation");
+    });
+
+    navLinks.querySelectorAll("a").forEach((link) => {
+      link.addEventListener("click", () => {
+        navLinks.classList.remove("open");
+        menuToggle.setAttribute("aria-expanded", "false");
+        menuToggle.setAttribute("aria-label", "Open navigation");
+      });
+    });
+
+    document.getElementById("year").textContent = new Date().getFullYear();
+
+    updateRecommendation();
+  
