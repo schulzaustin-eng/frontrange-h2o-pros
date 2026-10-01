@@ -1,7 +1,7 @@
 
     const CONFIG = {
       formEndpoint: "https://formspree.io/f/REPLACE_ME",
-      fallbackEmail: "hello@frontrangewaterpros.com"
+      fallbackEmail: "info@frontrangewaterpros.com"
     };
 
     const UTILITY_DATA = {
