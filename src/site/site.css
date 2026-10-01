@@ -1168,3 +1168,5 @@ h1 em, h1 i { color: var(--primary); }
 .hero-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; }
 .hero-veil { position: absolute; inset: 0; z-index: -1;
   background: linear-gradient(90deg, oklch(0.936 0.008 220 / .92) 0%, oklch(0.936 0.008 220 / .7) 50%, oklch(0.936 0.008 220 / .25) 100%); }
+.hero-grid { grid-template-columns: minmax(0, 1fr) !important; }
+.hero-grid > * { max-width: 44rem; }
