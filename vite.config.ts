@@ -7,7 +7,7 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 // GITHUB_PAGES=true builds a fully static, prerendered site into dist/client.
-const isGhPages = process.env.GITHUB_PAGES === "true";
+const isGhPages = process.env["GITHUB_PAGES"] === "true";
 
 export default defineConfig({
   vite: { base: "/" },
