@@ -6,10 +6,18 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
+// GITHUB_PAGES=true builds a fully static, prerendered site into dist/client.
+const isGhPages = process.env["GITHUB_PAGES"] === "true";
+
 export default defineConfig({
+  vite: { base: "/" },
+  ...(isGhPages ? { nitro: false as const } : {}),
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
     server: { entry: "server" },
+    ...(isGhPages
+      ? { prerender: { enabled: true, crawlLinks: true }, pages: [{ path: "/" }] }
+      : {}),
   },
 });
