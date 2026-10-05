@@ -9,3 +9,4 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 - Home page content/behavior lives in src/site/ (body.html, site.js.txt, site.css) rendered raw by src/routes/index.tsx; styling overrides go at the end of site.css. Why: keeps the user's supplied page intact while applying the brand look.
+- GitHub Pages: build with GITHUB_PAGES=true for a static prerendered site in dist/client (deployed by .github/workflows/deploy.yml). Why: Pages only serves static files. Site media lives in public/media so it works off Lovable hosting.
