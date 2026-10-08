@@ -1170,3 +1170,99 @@ h1 em, h1 i { color: var(--primary); }
   background: linear-gradient(90deg, oklch(0.936 0.008 220 / .92) 0%, oklch(0.936 0.008 220 / .7) 50%, oklch(0.936 0.008 220 / .25) 100%); }
 .hero-grid { grid-template-columns: minmax(0, 1fr) !important; }
 .hero-grid > * { max-width: 44rem; }
+
+/* Explicit field colors prevent inherited page colors and browser autofill
+   from producing dark-on-dark text. Keep the surrounding glacial design. */
+:root,
+[data-theme="light"] {
+  --field-background: oklch(1 0 0);
+  --field-foreground: oklch(0.219 0.024 226);
+  --field-placeholder: oklch(0.489 0.031 226);
+  --field-border: oklch(0.55 0.025 226);
+  --field-color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --field-background: oklch(0.25 0.018 226);
+  --field-foreground: oklch(0.97 0.006 213);
+  --field-placeholder: oklch(0.76 0.015 226);
+  --field-border: oklch(0.65 0.025 226);
+  --field-color-scheme: dark;
+}
+
+input,
+textarea,
+select,
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+  color: var(--field-foreground);
+  background-color: var(--field-background);
+  -webkit-text-fill-color: var(--field-foreground);
+  border-color: var(--field-border);
+  color-scheme: var(--field-color-scheme);
+  caret-color: var(--field-foreground);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--field-placeholder);
+  -webkit-text-fill-color: var(--field-placeholder);
+  opacity: 1;
+}
+
+select option,
+select optgroup {
+  color: var(--field-foreground);
+  background-color: var(--field-background);
+  -webkit-text-fill-color: var(--field-foreground);
+}
+
+label,
+legend {
+  color: var(--text);
+}
+
+.choice label,
+[data-theme="dark"] .choice label {
+  color: var(--field-foreground);
+  background-color: var(--field-background);
+  border-color: var(--field-border);
+}
+
+.choice label::before {
+  border-color: var(--field-border);
+}
+
+.choice input:checked + label {
+  color: var(--text);
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+textarea:-webkit-autofill:active,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus,
+select:-webkit-autofill:active {
+  color: var(--field-foreground) !important;
+  -webkit-text-fill-color: var(--field-foreground) !important;
+  background-color: var(--field-background) !important;
+  -webkit-box-shadow: 0 0 0 1000px var(--field-background) inset !important;
+  box-shadow: 0 0 0 1000px var(--field-background) inset !important;
+  caret-color: var(--field-foreground) !important;
+}
+
+input:autofill,
+textarea:autofill,
+select:autofill {
+  color: var(--field-foreground) !important;
+  -webkit-text-fill-color: var(--field-foreground) !important;
+  background-color: var(--field-background) !important;
+  box-shadow: 0 0 0 1000px var(--field-background) inset !important;
+}
